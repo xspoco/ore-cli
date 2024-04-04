@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Set default values
-DEFAULT_RPC_URL="https://api.mainnet-beta.solana.com"
+# Multiple RPC supported
+RPC_URLS=("https://api.mainnet-beta.solana.com")
 DEFAULT_KEY="id.json"
-DEFAULT_FEE=1
-DEFAULT_THREADS=4
+DEFAULT_FEE=100000
+DEFAULT_THREADS=20
 
 # Assign arguments with defaults
-RPC_URL=${1:-$DEFAULT_RPC_URL}
-KEY=${2:-$DEFAULT_KEY}
+KEY=${1:-$DEFAULT_KEY}
 FEE=${3:-$DEFAULT_FEE}
 THREADS=${4:-$DEFAULT_THREADS}
 
@@ -18,7 +18,8 @@ COMMAND="./target/release/ore --rpc ${RPC_URL} --keypair ${KEY} --priority-fee $
 # Loop indefinitely
 while true; do
   echo "Starting the process..."
-  
+  RPC_URL=${RPC_URLS[$RANDOM % ${#RPC_URLS[@]}]}
+  echo "Starting the process with RPC URL: ${RPC_URL}"
   # Execute the command
   eval $COMMAND
   
