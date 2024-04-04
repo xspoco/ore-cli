@@ -11,12 +11,12 @@ use solana_sdk::{
     keccak::{hashv, Hash as KeccakHash},
     signature::Signer,
 };
+use tokio::time::sleep;
 
 use crate::{
     utils::{get_clock_account, get_proof, get_treasury},
     Miner,
 };
-use rand::seq::SliceRandom;
 
 impl Miner {
     pub async fn mine(&self, threads: u64) {
@@ -26,9 +26,11 @@ impl Miner {
 
         let mut stdout = stdout();
 
+
+
         // Start mining loop
         loop {
-            // Fetch account state
+            // Find a valid hash.
             let treasury = get_treasury(self.cluster.clone()).await;
             let proof = get_proof(self.cluster.clone(), signer.pubkey()).await;
 
@@ -45,13 +47,7 @@ impl Miner {
             stdout.flush().ok();
 
             // Submit mine tx.
-            // Use busses randomly so on each epoch, transactions don't pile on the same busses
-            let mut bus_ids: Vec<usize> = (0..BUS_COUNT).collect();
-            bus_ids.shuffle(&mut rand::thread_rng());
-
-            let mut bus_ix = 0;
-            let mut bus_id = bus_ids[bus_ix] as u8;
-
+            let mut bus_id = 0;
             let mut invalid_busses: Vec<u8> = vec![];
             let mut needs_reset = false;
             'submit: loop {
@@ -59,27 +55,42 @@ impl Miner {
                 if invalid_busses.len().eq(&(BUS_COUNT as usize)) {
                     // All busses are drained. Wait until next epoch.
                     std::thread::sleep(std::time::Duration::from_millis(1000));
-                    break 'submit;
                 }
                 if invalid_busses.contains(&bus_id) {
                     println!("Bus {} is empty... ", bus_id);
-                    bus_ix += 1;
-                    if bus_ix == BUS_COUNT {
+                    bus_id += 1;
+                    if bus_id.ge(&(BUS_COUNT as u8)) {
                         std::thread::sleep(Duration::from_secs(1));
-                        bus_ix = 0;
+                        bus_id = 0;
                     }
-                    bus_id = bus_ids[bus_ix] as u8;
                 }
 
                 // Reset if epoch has ended
                 let treasury = get_treasury(self.cluster.clone()).await;
                 let clock = get_clock_account(self.cluster.clone()).await;
                 let threshold = treasury.last_reset_at.saturating_add(EPOCH_DURATION);
+                let mut attempts = 0;
+                const MAX_ATTEMPTS: u8 = 10; // Maximum number of attempts before giving up
                 if clock.unix_timestamp.ge(&threshold) || needs_reset {
                     let reset_ix = ore::instruction::reset(signer.pubkey());
-                    self.send_and_confirm(&[reset_ix])
-                        .await
-                        .expect("Transaction failed");
+                    loop {
+                        let cloned_ix = reset_ix.clone();
+                        match self.send_and_confirm(&[cloned_ix]).await {
+                            Ok(_) => {
+                                println!("Transaction confirmed");
+                                break;
+                            }
+                            Err(e) => {
+                                attempts += 1;
+                                println!("Attempt {} failed: {:?}", attempts, e);
+                                if attempts >= MAX_ATTEMPTS {
+                                    panic!("Transaction failed after {} attempts: {:?}", MAX_ATTEMPTS, e);
+                                }
+                                // Exponential backoff or fixed delay could be considered here
+                                sleep(Duration::from_secs(5)).await;
+                            }
+                        }
+                    }
                     needs_reset = false;
                 }
 
