@@ -1,13 +1,25 @@
 # Ore CLI
 
-A command line interface for the Ore program.
+Ore CLI is a command-line tool for interacting with the Ore program on Solana.
 
-## Building
+## Setup
 
-To build the Ore CLI, you will need to have the Rust programming language installed. You can install Rust by following the instructions on the [Rust website](https://www.rust-lang.org/tools/install).
+**Prerequisites:**
+- Install Rust: [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install).
 
-Once you have Rust installed, you can build the Ore CLI by running the following command:
-
+**Build:**
 ```sh
 cargo build --release
 ```
+
+**Configuration:**
+- Write private keys to `keys`, one per line.
+- Edit `RPC_URLS` in `supervision.sh` to include your desired RPC endpoints.
+
+**Run:**
+```sh
+./supervision.sh
+```
+
+This will start Ore CLI using the specified configuration.
+
