@@ -6,6 +6,11 @@ Ore CLI is a command-line tool for interacting with the Ore program on Solana.
 
 **Prerequisites:**
 - Install Rust: [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install).
+- Install gcc
+```sh
+sudo apt-get update
+sudo apt-get install build-essential
+```
 
 **Build:**
 ```sh
