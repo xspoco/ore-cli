@@ -17,8 +17,6 @@ use solana_sdk::{
 };
 use solana_transaction_status::UiTransactionEncoding;
 use tokio::time::sleep;
-use rand::{thread_rng, Rng};
-
 
 use crate::Miner;
 
@@ -140,20 +138,40 @@ impl Miner {
             match client.send_transaction_with_config(&tx, send_cfg).await {
                 Ok(sig) => {
                     log::info!("{:?}", sig);
-                    
-                    
-                    let mut rng = thread_rng();
-                    let wait_secs: u64 = rng.gen_range(5..=15);
-                    log::info!("Waiting for {} seconds before proceeding.", wait_secs);
-                    println!("ColDing for {} sec✨", wait_secs);
-                    
-                    sleep(Duration::from_secs(wait_secs)).await;
-                    
-                    
-                    return Ok(sig);
+                    let mut confirm_check = 0;
+                    'confirm: loop {
+                        match client
+                            .confirm_transaction_with_commitment(
+                                &sig,
+                                CommitmentConfig::confirmed(),
+                            )
+                            .await
+                        {
+                            Ok(confirmed) => {
+                                log::info!(
+                                    "Confirm check {:?}: {:?}",
+                                    confirm_check,
+                                    confirmed.value
+                                );
+                                if confirmed.value {
+                                    return Ok(sig);
+                                }
+                            }
+                            Err(err) => {
+                                log::error!("Err: {:?}", err);
+                            }
+                        }
+
+                        // Retry confirm
+                        std::thread::sleep(Duration::from_millis(500));
+                        confirm_check += 1;
+                        if confirm_check.gt(&CONFIRM_RETRIES) {
+                            break 'confirm;
+                        }
+                    }
                 }
                 Err(err) => {
-                    println!("Error sending transaction: {:?}", err);
+                    println!("Error {:?}", err);
                 }
             }
             stdout.flush().ok();
