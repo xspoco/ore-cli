@@ -2,11 +2,12 @@
 
 # Set default values
 # Multiple RPC supported
-RPC_URLS=("https://api.mainnet-beta.solana.com")
+
+RPCS_FILE="rpcs"
 KEYS_FILE="keys"
 DEFAULT_FEE=100000
 DEFAULT_THREADS=20
-
+mapfile -t RPC_URLS < "$RPCS_FILE"
 # Assign arguments with defaults
 FEE=${2:-$DEFAULT_FEE}
 THREADS=${3:-$DEFAULT_THREADS}

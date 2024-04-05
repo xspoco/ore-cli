@@ -14,7 +14,7 @@ cargo build --release
 
 **Configuration:**
 - Write private keys to `keys`, one per line.
-- Edit `RPC_URLS` in `supervision.sh` to include your desired RPC endpoints.
+- Write RPC urls to `rpcs`, one per line.
 
 **Run:**
 ```sh
