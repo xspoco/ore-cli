@@ -3,8 +3,8 @@
 # Set default values
 # Multiple RPC supported
 
-RPCS_FILE="rpcs"
-KEYS_FILE="keys"
+RPCS_FILE="./rpcs"
+KEYS_FILE="./keys"
 DEFAULT_FEE=100000
 DEFAULT_THREADS=20
 mapfile -t RPC_URLS < "$RPCS_FILE"
