@@ -3,7 +3,7 @@
 # Set default values
 # Multiple RPC supported
 RPC_URLS=("https://api.mainnet-beta.solana.com")
-KEYS_FILE="keys.txt"
+KEYS_FILE="keys"
 DEFAULT_FEE=100000
 DEFAULT_THREADS=20
 
