@@ -1,37 +1,53 @@
-name: Rust
+name: Rust CI/CD
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ master ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ master ]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  build-and-release:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu, x86_64-apple-darwin]  # Add more targets as needed
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Rust
-      uses: actions/setup-rust@v1
-      with:
-        profile: minimal
-    - name: Build for Linux
-      run: cargo build --release --target x86_64-unknown-linux-gnu
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1
-      with:
+      - uses: actions/checkout@v3
 
-        upload_url: ${{ github.event.release.upload_url }}
+      - name: Install Rust toolchain
+        uses: rust-lang/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.target }}
+          components: cargo, rustfmt
 
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
 
-        asset_path: ./target/x86_64-unknown-linux-gnu/release/ore
+      - name: Test (optional)
+        run: cargo test --release --target ${{ matrix.target }}  # Uncomment for testing
 
-        asset_name: ore
+      - name: Create Release (if push to master)
+        if: github.ref == 'refs/heads/master'
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.sha }}  # Use commit SHA for release tag
+          release_name: ${{ github.sha }} - Release  # Descriptive release name
+          body: |  # Optional release description
+            Built and tested for targets:
+            ${{ join(matrix.target, ', ') }}
 
-        asset_content_type: application/octet-stream
+          draft: false  # Set to true for draft releases
+          prerelease: false  # Set to true for pre-releases
+
+      - name: Upload Artifacts (optional)
+        if: always()  # Upload for all branches/PRs (optional)
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ runner.os }}-artifacts
+          path: target/release/*.{exe,dll}  # Adjust path based on your project structure
+
