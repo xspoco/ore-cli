@@ -1,53 +1,26 @@
 name: Rust CI/CD
 
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
-
-env:
-  CARGO_TERM_COLOR: always
+  - push
 
 jobs:
-  build-and-release:
+  build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target: [x86_64-unknown-linux-gnu, x86_64-apple-darwin]  # Add more targets as needed
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v2
 
-      - name: Install Rust toolchain
-        uses: rust-lang/rust-toolchain@v1
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ matrix.target }}
-          components: cargo, rustfmt
+          toolchain: stable
 
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release
 
-      - name: Test (optional)
-        run: cargo test --release --target ${{ matrix.target }}  # Uncomment for testing
-
-      - name: Create Release (if push to master)
-        if: github.ref == 'refs/heads/master'
-        uses: actions/create-release@v1
+      - name: Publish
+        uses: actions/release@v1
         with:
-          tag_name: ${{ github.sha }}  # Use commit SHA for release tag
-          release_name: ${{ github.sha }} - Release  # Descriptive release name
-          body: |  # Optional release description
-            Built and tested for targets:
-            ${{ join(matrix.target, ', ') }}
-
-          draft: false  # Set to true for draft releases
-          prerelease: false  # Set to true for pre-releases
-
-      - name: Upload Artifacts (optional)
-        if: always()  # Upload for all branches/PRs (optional)
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ runner.os }}-artifacts
-          path: target/release/*.{exe,dll}  # Adjust path based on your project structure
-
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body: ${{ github.sha }}
