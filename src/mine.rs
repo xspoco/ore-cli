@@ -4,15 +4,14 @@ use std::{
     time::Duration,
 };
 
-use chrono::{Duration as ChronoDuration, Utc};
-use ore::{self, BUS_ADDRESSES, BUS_COUNT, EPOCH_DURATION, START_AT};
+use ore::{self, BUS_ADDRESSES, BUS_COUNT, EPOCH_DURATION};
 use solana_client::client_error::ClientErrorKind;
 use solana_sdk::{
     keccak::{hashv, Hash as KeccakHash},
     signature::Signer,
 };
 use tokio::time::sleep;
-
+use rand::seq::SliceRandom;
 use crate::{
     utils::{get_clock_account, get_proof, get_treasury},
     Miner,
@@ -46,24 +45,32 @@ impl Miner {
                 .ok();
             stdout.flush().ok();
 
-            // Submit mine tx.
-            let mut bus_id = 0;
-            let mut invalid_busses: Vec<u8> = vec![];
-            let mut needs_reset = false;
-            'submit: loop {
-                // Find a valid bus.
-                if invalid_busses.len().eq(&(BUS_COUNT as usize)) {
-                    // All busses are drained. Wait until next epoch.
-                    std::thread::sleep(std::time::Duration::from_millis(1000));
-                }
-                if invalid_busses.contains(&bus_id) {
-                    println!("Bus {} is empty... ", bus_id);
-                    bus_id += 1;
-                    if bus_id.ge(&(BUS_COUNT as u8)) {
-                        std::thread::sleep(Duration::from_secs(1));
-                        bus_id = 0;
-                    }
-                }
+             // Use busses randomly so on each epoch, transactions don't pile on the same busses
+             let mut bus_ids: Vec<usize> = (0..BUS_COUNT).collect();
+             bus_ids.shuffle(&mut rand::thread_rng());
+ 
+             let mut bus_ix = 0;
+             let mut bus_id = bus_ids[bus_ix] as u8;
+ 
+             let mut invalid_busses: Vec<u8> = vec![];
+             let mut needs_reset = false;
+             'submit: loop {
+                 // Find a valid bus.
+                 if invalid_busses.len().eq(&(BUS_COUNT as usize)) {
+                     // All busses are drained. Wait until next epoch.
+                     std::thread::sleep(std::time::Duration::from_millis(1000));
+                     // All busses are empty, let;s start anew next time with fresh invalid_busses and bus_id
+                     break 'submit;
+                 }
+                 if invalid_busses.contains(&bus_id) {
+                     println!("Bus {} is empty... ", bus_id);
+                     bus_ix += 1;
+                     if bus_ix == BUS_COUNT {
+                         std::thread::sleep(Duration::from_secs(1));
+                         bus_ix = 0;
+                     }
+                     bus_id = bus_ids[bus_ix] as u8;
+                 }
 
                 // Reset if epoch has ended
                 let treasury = get_treasury(self.cluster.clone()).await;
